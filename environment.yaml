@@ -1,0 +1,9 @@
+name: watermark
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pypdf2=2.11.1
+  - reportlab=4.0.8
+  - typing-extensions=4.9.0
