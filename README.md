@@ -13,6 +13,4 @@ optional arguments:
                         Path to the input PDF files.
   -x [file_name ...], --exclude [file_name ...]
                         File names to exclude.
-  -p position, --position position
-                        Position of watermark relative to text. Valid options: ['back', 'front'].
 ```

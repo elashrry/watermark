@@ -5,7 +5,6 @@
 This script allows you to add a watermark to PDF files, either at the front or back of the existing content.
 """
 import argparse
-import enum
 import logging
 import tempfile
 import uuid
@@ -17,10 +16,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 MAX_TEXT_LENGTH = 28  # including spaces
-
-class WatermarkPosition(enum.Enum):
-    BACK = "back"
-    FRONT = "front"
 
 def create_watermark(text, output_file_path=None):
     """Creates a PDF watermark with the given text.
@@ -42,7 +37,7 @@ def create_watermark(text, output_file_path=None):
     output_file_path = correct_pdf_path(Path(output_file_path))
 
     pdf = canvas.Canvas(str(output_file_path), pagesize=A4)
-    pdf.setFillColor(colors.gray, alpha=0.3)
+    pdf.setFillColor(colors.gray, alpha=0.6)
     pdf.setFont("Helvetica", 50)
     pdf.rotate(45)
     pdf.drawCentredString(500, 100, text)
@@ -95,7 +90,7 @@ def ensure_new_file(file_path):
         index += 1
     return file_path
 
-def add_watermark(input_file_path, watermark_file_path, position=WatermarkPosition.BACK):
+def add_watermark(input_file_path, watermark_file_path):
     """Adds watermark to the specified position in the input PDF file.
 
     Args:
@@ -104,9 +99,6 @@ def add_watermark(input_file_path, watermark_file_path, position=WatermarkPositi
         position (str, optional): Position of the watermark relative to the text, 
             either "back" or "front". Defaults to "back".
     """
-    if position not in WatermarkPosition:
-        raise ValueError(
-            "position must be `WatermarkPosition.FRONT` or `WatermarkPosition.BACK`")
     input_file_path = Path(input_file_path)
     new_file_path = Path(input_file_path.parent, f"{input_file_path.stem}_watermarked.pdf")
     new_file_path = ensure_new_file(new_file_path)
@@ -118,11 +110,9 @@ def add_watermark(input_file_path, watermark_file_path, position=WatermarkPositi
         output = PdfFileWriter()
         with open(tmp_watermark_file_path, "rb") as tmp_watermark_file:
             tmp_watermark_pdf = PdfFileReader(tmp_watermark_file)
-            back_pdf = tmp_watermark_pdf if position == WatermarkPosition.BACK else input_pdf
-            front_pdf = tmp_watermark_pdf if position == WatermarkPosition.FRONT else input_pdf
             for i in range(page_count):
-                pdf_page = back_pdf.getPage(i)
-                pdf_page.merge_page(front_pdf.getPage(i))
+                pdf_page = input_pdf.getPage(i)
+                pdf_page.merge_page(tmp_watermark_pdf.getPage(i))
                 output.addPage(pdf_page)
 
             with open(new_file_path, "wb") as new_file:
@@ -153,19 +143,10 @@ def main():
         required=False,
         default=None,
         metavar="file_name")
-    parser.add_argument(
-        "-p",
-        "--position",
-        help=f"Position of watermark relative to text. Valid options: {[pos.value for pos in WatermarkPosition]}.",
-        choices=[pos.value for pos in WatermarkPosition],
-        required=False,
-        default=WatermarkPosition.BACK.value,
-        metavar="position")
 
     args = parser.parse_args()
     exclude_list = [] if args.exclude is None else args.exclude
     file_list = [] if args.input_files is None else args.input_files
-    position = WatermarkPosition(args.position)
     cwd = Path.cwd()
     if not file_list:
         file_list = [f for f in cwd.glob("*.pdf") if f.name not in exclude_list]
@@ -177,7 +158,7 @@ def main():
     for input_file in file_list:
         logging.info("Processing file: %s", input_file)
         add_watermark(
-            input_file, watermark_file_path, position=position)
+            input_file, watermark_file_path)
     logging.info("All done!")
 
 if __name__ == "__main__":
